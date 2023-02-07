@@ -16,17 +16,12 @@ test_output = [
 
 
 class EnvTest(EnvMarsLander):
-    
-    def surface_initialisation(self, number_points: int) -> None:
-        lands = [Point(x,y) for x,y in  test_input[0]]
-        self.surface = Surface(lands)
-        self.landing_site_point = Point(
-            self.surface.landing_site.point_b.x - self.surface.landing_site.point_b.x,
-            self.surface.landing_site.point_b.y - self.surface.landing_site.point_b.y
-        )
+    def __init__(self,test_input):
+        super().__init__(test_input[0],test_input[1])
+        self.test_input = test_input
 
     def reset(self):
-        self.lander.update(*test_input[1])
+        self.lander.update(*self.test_input[1])
 
 
 
@@ -34,15 +29,13 @@ evolution_number = 10
 population_size = 60
 gene_size = 100
 def main():
-    env = EnvTest()
-    number_point = int(0)
-    env.surface_initialisation(number_point)
+    env = EnvTest(test_input)
     env.reset()
     population = Population.generator(population_size,gene_size)
     for _ in range(evolution_number):
         for chromosome in population:
             if chromosome.use(env):
-                print("SUCCESS")
+                
                 input()    
             else:
                 
@@ -53,18 +46,4 @@ def main():
 
 
 
-# %%
-env = EnvTest()
-env.surface_initialisation(0)
-env.reset()
-chromosome = Chromosome.generator(100)
-chromosome.use(env)
-# %%
-action = Action(-45, 6)
-print(env.lander)
-env.step(action)
-print(env.lander)
-
-# %%
-main()
 # %%
