@@ -345,7 +345,8 @@ class Chromosome:
     def size(self):
         return len(self.genes)
 
-    def mutation(self,epsilon=1):
+    def mutation(self,score):
+        epsilon = MUTATION_PROBABILITY*(1 + math.exp(-score/3))
         self.score = 0
         for gene in self:
             gene.mutation(epsilon)
@@ -475,18 +476,18 @@ class Population:
         bests_list = population_sorted[:size_graded_retain]
 
         # Change the population
-        self.chromosomes_parents = self.test_roulette_wheel()
+        self.chromosomes_parents = self.roulette_wheel()
         self.chromosomes = [bests_list[0]]
         #print(f"Best score : {bests_list[0].score} | Worse score : {leftover[-1].score}")
         return bests_list[0]
         
 
-    def mutation(self):
+    def mutation(self,score):
         while len(self.chromosomes) < self.population_size:
             parent0,parent1 = random.sample(self.chromosomes_parents, 2)
             child0,child1 = parent0.crossover(parent1)
-            child0.mutation(MUTATION_PROBABILITY)
-            child1.mutation(MUTATION_PROBABILITY)
+            child0.mutation(score)
+            child1.mutation(score)
             self.chromosomes.append(child0)
             self.chromosomes.append(child1)
 
