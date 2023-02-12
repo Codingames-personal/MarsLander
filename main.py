@@ -9,7 +9,7 @@ round_up = math.ceil
 input_codingames = lambda : list(map(int,input().split()))
 
 
-GRADED_RETAIN_PERCENT = 0.2     # percentage of retained best fitting individuals
+GRADED_RETAIN_PERCENT = 0.2    # percentage of retained best fitting individuals
 NONGRADED_RETAIN_PERCENT = 0.2  # percentage of retained remaining individuals (randomly selected)
 MUTATION_PROBABILITY = 0.01
 
@@ -42,7 +42,7 @@ class Action:
     def mutation(self) -> None:
         """ Set up the action with random setings"""
         self.rotate = random.randint(-15,15)
-        self.power = random.randint(-1,1)
+        self.power = random.choice([-1, 0, 0, 0, 1, 1, 1, 1])
 
     def last_action(self,rotate,v_speed):
         """Choose the best action to choose"""
@@ -81,7 +81,7 @@ class Line:
         point_b : Point
     """
     @staticmethod
-    def ccw(A : Point, B : Point, C : Point):
+    def ccw(A : Point, B : Point, C : Point) -> bool:
         return (C.y-A.y) * (B.x-A.x) > (B.y-A.y) * (C.x-A.x)
 
     def __init__(self, point_a : Point, point_b : Point ):
@@ -218,27 +218,36 @@ class EnvMarsLander:
             self.surface.landing_site.point_b.y - self.surface.landing_site.point_b.y
         )
 
-    
+    def __str__(self) -> str:
+        score_info = f"Score : {self.get_score()}"
+        coord_info = f"Coords : x {self.lander.x} | y {self.lander.y}"
+        speed_info = f"Speed : h_speed {self.lander.h_speed} | v_speed {self.lander.v_speed}"
+        rotate_info = f"Rotate {self.lander.rotate}"
+        fuel_info = f"Fuel : {self.lander.fuel}"
+
+        return "\n".join([score_info,coord_info,speed_info,rotate_info,fuel_info])
+
     def distance(self):
         """ Calculate the distance by "walke" of the collision to the landing site"""
         if self.landing_on_site():
             return 0 
         point_lander = Point(self.lander.x,self.lander.y)
         run = False
-        
+        distance = 0
         for point in self.surface:
-            distance = 0
             if not run :
                 if point == self.surface.collision_line.point_a: # from left to the right 
                     point_from = point
-                    point_to = point_lander
+                    point_to = self.surface.collision_line.point_b
                     point_final = self.surface.landing_site.point_a
+                    distance = point_lander.distance(self.surface.collision_line.point_b)
                     run = True
 
                 elif point == self.surface.landing_site.point_b: # from right to the left
                     point_from = self.surface.landing_site.point_a
                     point_to = point
-                    point_final = point_lander
+                    point_final = self.surface.collision_line.point_a
+                    distance = self.surface.collision_line.point_a.distance(point_lander)
                     run = True
                     
             else:
@@ -247,14 +256,14 @@ class EnvMarsLander:
                 if point == point_final:
                     break
         return distance
-                
-
-
 
     def reset(self):
         """Reset the lander"""
         self.lander.update(*self.initial_state)
         self.score = 0
+
+    def exit_zone(self) -> bool:
+        return not (0<= self.lander.x < 7000 and 0<= self.lander.y < 3000)
 
     def landing_on_site(self) -> bool:
         return self.surface.landing_site.collision(
@@ -285,45 +294,10 @@ class EnvMarsLander:
             self.landing_horizontal_speed()
             )
 
-    def get_score_landing(self) -> float:
-        """Calcul the score of the landing"""
-        score = 0
-        
-        WEIGHT_ROTATE = 90
-        if self.landing_angle():
-            rotate_score = 1
-        else:
-            rotate_score = sigmoid(abs(self.lander.rotate)/WEIGHT_ROTATE)
-        score += rotate_score
-
-        WEIGHT_SPEED_VERTICAL = 500
-        if self.landing_vertical_speed():
-            vertical_speed_score = 2
-        else:
-            vertical_speed_score = sigmoid(abs(self.lander.v_speed)/WEIGHT_SPEED_VERTICAL)
-        score += vertical_speed_score
-
-        WEIGHT_SPEED_HORIZONTAL = 500
-        if self.landing_horizontal_speed():
-            horizontal_speed_score = 1
-        else:
-            horizontal_speed_score = sigmoid(abs(self.lander.h_speed)/WEIGHT_SPEED_HORIZONTAL)
-        score += horizontal_speed_score
-        WEIGHT_DISTANCE = 6000
-        if self.landing_on_site():
-            distance_score = 1
-        elif not (0 <= self.lander.x < 7000):
-            distance_score = 0
-        else:
-            distance_score = sigmoid(self.distance()/WEIGHT_DISTANCE)
-        score+=distance_score
-    
-        return score
-
     def get_score_distance(self):
         if self.landing_on_site():
             return 200
-        return 50*(1 - self.distance()/self.surface.distance_maximum)
+        return round(100*(1 - self.distance()/self.surface.distance_maximum))
 
     def get_score_speed(self):
         if self.landing_on_site():
@@ -331,20 +305,24 @@ class EnvMarsLander:
             score += min(0, 20 - abs(self.lander.h_speed))
         else:
             abs_speed = math.sqrt(self.lander.v_speed**2 + self.lander.h_speed**2)
-            score = 50*(1 - abs_speed/150) # 150 : max speed estimated
+            score = min(0, round(20*(- abs_speed/150))) # 150 : max speed estimated
+            score = 0
         return score
 
     def get_score_angle(self):
-        return 90 - abs(self.lander.rotate)
+        return round(20*(1 - abs(self.lander.rotate)/90))
 
     def get_score(self):
+        if self.exit_zone():
+            return 0
         score = self.get_score_distance() + self.get_score_speed()
         if self.landing_on_site():
             self.score = max(100,min(200,score))
+            if 180<=self.score:
+                self.score += self.get_score_angle()
         else:
-            self.score = max(0.01,min(100,score))
-        if self.score == 0:
-            print(self.get_score_distance(), self.get_score_speed())
+            self.score = max(0,min(100,score))
+
         return self.score
         
 
@@ -407,13 +385,20 @@ class EnvMarsLander:
         return done or collision
 
 class Codingames:
-    def __init__(self,chromosome):
-        self.i = 0
-        self.chromosome = chromosome
+    def __init__(self,initial_state):
+        self.rotate = initial_state[-2]
+        self.power = initial_state[-1]
 
     def step(self,action):
-        print(action)   
+        rotate = action.rotate + self.rotate
+        power = action.power + self.power
+        self.rotate = max(-90, min(90, rotate))
+        self.power = max(0, min(4, power))
+        print(self.rotate, self.power)   
         obs = input().split()
+        self.rotate = obs[-2]
+        self.power = obs[-1]
+        return False
 
 class Chromosome:
     
@@ -523,15 +508,13 @@ class Population:
         return len(self.chromosomes)
 
     def roulette_wheel_cumulative(self):
-        size_graded_retain = int((1 - GRADED_RETAIN_PERCENT) * self.population_size)
+        size_nongraded_retain = int((1 - GRADED_RETAIN_PERCENT) * self.population_size)
         total_score = sum(map(Chromosome.score, self.chromosomes))
 
-        scores = list(sorted(
+        scores = list(
             map(
                 lambda chromosome : [chromosome.score/total_score,chromosome],
                 self.chromosomes
-            ),
-            key = lambda score : score[0]
             ))
         cumulative_sum = 0
         
@@ -539,19 +522,21 @@ class Population:
             cumulative_sum += scores[i][0] 
             scores[i][0] = cumulative_sum 
 
+        #chromosome_couple = [[i] for i in range(len(self.chromosomes))]
         chromosome_selection = []
-        chromosome_taken = [False]*self.population_size
         paired = False
-        for _ in range(size_graded_retain):
+        for _ in range(size_nongraded_retain):
             random_percent = random.random()
             i = 0
-            while scores[i][0] < random_percent and not chromosome_taken[i]: i+=1
             if not paired:
-                chromosome_taken[i] = True
+                while scores[i][0] < random_percent : i+=1
+                index_parent = i
                 chromosome_parent0 = scores[i][1]
                 paired = True
             else:
-                chromosome_taken[i] = True
+                while scores[i][0] < random_percent : i+=1
+                #chromosome_couple[index_parent].append(i)
+                #chromosome_couple[i].append(index_parent)
                 couple = [chromosome_parent0,scores[i][1]]
                 chromosome_selection.append(couple)
                 paired = False
@@ -581,14 +566,15 @@ class Population:
         size_graded_retain = int(GRADED_RETAIN_PERCENT * self.size()) 
 
         #Extract the population sorted by score of each chromosome
-        population_sorted = list(
-            sorted(self.chromosomes, key=Chromosome.score, reverse=True)
+        self.chromosomes = list(
+            sorted(self.chromosomes, key=Chromosome.score)
         )
         #Take the size_skipped best
         self.parents = self.roulette_wheel_cumulative()
-        self.chromosomes = population_sorted[:size_graded_retain]
+        self.chromosomes = self.chromosomes[-size_graded_retain:]
+
         #print(f"Best score : {bests_list[0].score} | Worse score : {leftover[-1].score}")
-        return population_sorted[0]
+        return self.chromosomes[-1]
         
     def mutation(self):
         for parent0, parent1 in self.parents:        
@@ -597,11 +583,12 @@ class Population:
             while not self.add(child1): child1.mutation(MUTATION_PROBABILITY)
             if len(self.chromosomes) >= self.population_size:
                 break
-        for i in range(int(GRADED_RETAIN_PERCENT * self.size())):
-            self.chromosomes[i].mutation(MUTATION_PROBABILITY)
+
 
     def average_score(self):
         return sum(map(lambda x : x.score, self))/len(self.chromosomes)
+
+
 
     def number_of_collision(self):
         already_seen = [0]*len(self.chromosomes)
@@ -616,32 +603,34 @@ class Population:
         return nb_collision
 
 
-evolution_number = 10
-population_size = 30
-gene_size = 200
-
+evolution_number = 200
+population_size = 100
+gene_size = 400
 
 
 def main():
 
     number_point = int(input())
-    lands = input_codingames()
-    initial_state = input_codingames()
+    lands = []
+    for _ in range(number_points):
+        lands.append(input_codingames()[:2])
+    initial_state = input_codingames()[:7]
     env = EnvMarsLander(lands,initial_state)
     env.reset()
     population = Population.generator(population_size,gene_size)
-    for _ in range(evolution_number):
+    done = False
+    while not done:
         for chromosome in population:
             if chromosome.use(env):
-                chromosome.use(Codingames())
-                exit()
+                chromosome.use(Codingames(initial_state))
+                done = True
+
             env.reset()
-        print(population.average_score())
+
         population.selection()
         
         population.mutation()
 
-    
 
 
 # %%

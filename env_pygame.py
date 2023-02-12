@@ -23,38 +23,47 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
+GREEN = (0, 255, 0)
 
 image_directory_path = "/home/smaug/Documents/CodingGames/MarsLander/image/"
 
 test_input = [
     [[0, 1500],[1000, 2000], [2000, 500], [3500, 500], [5000, 1500], [6999, 1000]],
-    [5000, 2500, -50, 0, 1000, 90, 0]
+    [5000, 2500, 0, 0, 1000, 0, 0]
+]
+test_grotte = [
+    [[0, 450], [300, 750], [1000, 450], [1500, 650], [1800, 850], [2000, 1950], [2200, 1850], [2400, 2000], [3100, 1800], [3150, 1550], [2500, 1600], [2200, 1550], [2100, 750], [2200, 150], [3200, 150], [3500, 450], [4000, 950], [4500, 1450], [5000, 1550], [5500, 1500], [6000, 950], [6999, 1750]],
+    [6500, 2600, -20, 0, 10001, 45, 0]
+]
+
+test_grotte_inv = [
+    [[0, 1800], [300, 1200], [1000, 1550], [2000, 1200], [2500, 1650], [3700, 220], [4700, 220], [4750, 1000], [4700, 1650], [4000, 1700], [3700, 1600], [3750, 1900], [4000, 2100], [4900, 2050], [5100, 1000], [5500, 500], [6200, 800], [6999, 600]],
+    [6500, 2000, 0, 0, 12001, 0, 0]
 ]
 
 class EnvRender(EnvMarsLander):
-    def __init__(self):
-        super().__init__()
+    def __init__(self,lands : list, initial_state : list):
+        super().__init__(lands, initial_state)
+        self.env_id = 0
         pygame.init()
-        
         self.display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.lander_image = pygame.image.load(image_directory_path+"lander.png").convert()
-        self.clock = pygame.time.Clock()
+        self.font = pygame.font.Font(None, 36)
+        
+        #self.lander_image = pygame.image.load(image_directory_path+"lander.png").convert()
 
+    def screen_reset(self):
+        self.display.fill(BLACK)
+        self.draw_surface()
+        
     def reset(self):
-        self.lander.update(*test_input[1])
+        super().reset()
         self.trajectory = []
-    
-    def draw_text(self,string, x ,y , fontSize=1000 ): #Function to set text
 
-        font = pygame.font.Font('freesansbold.ttf', fontSize)
-        #(0, 0, 0) is black, to make black text
-        text = font.render(string, True, WHITE) 
-        textRect = text.get_rect()
-        textRect.center = (x,y) 
-
-    def draw_trajectory(self):
-        for x,y in self.trajectory:
-            self.display.set_at((fx(x), fy(y)), BLUE)
+    def render_reset(self):
+        self.env_id +=1
+        self.screen_reset()
+        id_text = self.font.render("Population : " + str(self.env_id), True, (255, 255, 255))
+        self.display.blit(id_text, (100, 100))
 
     def draw_surface(self):
         for line in self.surface.lines():
@@ -65,53 +74,92 @@ class EnvRender(EnvMarsLander):
                 [fx(line.point_b.x), fy(line.point_b.y)]
             )
 
-    def render(self):
-        self.display.fill(BLACK)
-        self.draw_surface()
-        self.draw_trajectory()
-        self.draw_text(f"x : {self.lander.x}", fx(1000), fy(1000))
-        self.draw_text(f"y : {self.lander.y}", fx(1000), fy(1200))
-        """self.display.blit(
-            self.lander_image,
-            [fx(self.lander.x),fy(self.lander.y)]
-        )"""
-        pygame.display.flip()
-        pygame.display.update()
-        
-
-    def surface_initialisation(self, number_points: int) -> None:
-        lands = [Point(x,y) for x,y in test_input[0]]
-        self.surface = Surface(lands)
-        self.landing_site_point = Point(
-            self.surface.landing_site.point_b.x - self.surface.landing_site.point_b.x,
-            self.surface.landing_site.point_b.y - self.surface.landing_site.point_b.y
-        )
-        self.display.fill(BLACK)
-
-
     def step(self,action):
         done = super().step(action)
         self.trajectory.append([self.lander.x,self.lander.y])
         #pygame.transform.rotate(self.lander_image,self.rotate)
-        self.render()
-        self.clock.tick(1)
+        
         if done :
-            pygame.quit()
-            sys.exit()
+            if self.successful_landing():
+                self.env_id -=1
+                self.render_reset()
+                color = GREEN
+                width_ = 5
+
+            else:
+                color = BLUE
+                width_ = 1
+            x_, y_ = self.trajectory[0]
+            for x,y in self.trajectory[1:]:
+                pygame.draw.line(
+                    self.display, 
+                    color, 
+                    [fx(x_), fy(y_)],
+                    [fx(x), fy(y)],
+                    width=width_
+                )
+                x_, y_ = x, y
+
         return done
       
 
     
 # %%
-env = EnvRender()
-env.surface_initialisation(0)
+
+evolution_number = 200
+population_size = 100
+gene_size = 400
+
+env = EnvRender(*test_input)
 env.reset()
-chromosome = Chromosome.generator(100)
-chromosome.use(env)
-# %%
+env.render_reset()
+population = Population.generator(population_size, gene_size)
+
 while True:
+    success = False
+    for chromosome in population:
+        
+        if chromosome.use(env):
+            print("------SUCCESS------")
+            print(f"Population {env.env_id}")
+            print(env)
+            success = True
+            break
+        env.reset()
+    
+
+    c = population.selection()
+    
+    population.mutation()
+    pygame.display.flip()
+    pygame.event.wait()
+
+    while True:
+        event = pygame.event.wait()
+        if success:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+               break
+        else:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+                break
+        
+        if event.type == pygame.QUIT:
+            pygame.display.quit()
+            pygame.quit()
+            sys.exit()
+
+    env.render_reset()
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.display.quit()
             pygame.quit()
             sys.exit()
+
+
+
+
+
+
+
+# %%
