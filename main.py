@@ -15,6 +15,7 @@ MUTATION_PROBABILITY = 0.01
 
 sigmoid = lambda x : math.exp(-x)
 
+
 class Action:
     """Action of the lander
         rotate : [-15,15]
@@ -39,16 +40,16 @@ class Action:
     def __eq__(self, other) -> bool:
         return self.rotate == other.rotate and self.power == other.power
 
-    def mutation(self) -> None:
+    def mutation(self, probability=1) -> None:
         """ Set up the action with random setings"""
-        self.rotate = random.randint(-15,15)
-        self.power = random.choice([-1, 0, 0, 0, 1, 1, 1, 1])
+        if random.random() < probability:
+            self.rotate = random.randint(-15,15)
+            self.power = random.choice([-1, 0, 0, 1, 1, 1])
 
-    def last_action(self,rotate,v_speed):
+    def last_action(self,rotate):
         """Choose the best action to choose"""
-        if abs(v_speed) <= 4:
-            self.power = 1
-        self.rotate = -rotate
+        if abs(rotate) <= 15:
+            self.rotate = -rotate
                     
 ##
 #%% ------------------ENVIRONMENT------------------------------
@@ -67,6 +68,9 @@ class Point:
 
     def __str__(self):
         return f"{self.x} {self.y}"
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
 
     def __eq__(self, other) -> bool:
         return (self.x == other.x and self.y == other.y)
@@ -131,6 +135,18 @@ class Lander:
         except AttributeError :
             return "Lander not yiet initialized"
         
+
+
+    def __eq__(self, other) -> bool:
+        for self_attr, other_attr in zip(vars(self).values(), vars(other).values()):
+            if not round(self_attr) == round(other_attr):
+                return False
+        return True
+
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+        
     def copy(self,other):
         """Copy other into self"""
         self.update(
@@ -142,6 +158,7 @@ class Lander:
             other.rotate, 
             other.power
         )
+        
     def update(self,x ,y ,h_speed ,v_speed ,fuel ,rotate ,power):
         """Update the caracteristics of the lander"""
         self.x = x
@@ -166,6 +183,15 @@ class Surface:
     
     def __next__(self):
         return next(self)
+    
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+
+    def __eq__(self, other) -> bool:
+        for point_self, point_other in zip(self, other):
+            if not point_self == point_other:
+                return False
+        return True
 
     def lines(self):
         """Generator of lines"""
@@ -205,7 +231,7 @@ class EnvMarsLander:
     """ Environment of the Mars Lander puzzle of CodinGames"""
     GRAVITY = - 3.711 # gravity on Mars m.s-2
 
-    def __init__(self, lands : list, initial_state : list):
+    def __init__(self, lands : list, initial_state : list, population = None):
         self.lands = lands
         self.initial_state = initial_state
         self.lander = Lander()
@@ -213,25 +239,29 @@ class EnvMarsLander:
         self.surface = Surface(
             list(map(lambda obs : Point(obs[0],obs[1]), self.lands))
         )
-        self.landing_site_point = Point(
-            self.surface.landing_site.point_b.x - self.surface.landing_site.point_b.x,
-            self.surface.landing_site.point_b.y - self.surface.landing_site.point_b.y
-        )
+        self.population = population
 
     def __str__(self) -> str:
-        score_info = f"Score : {self.get_score()}"
-        coord_info = f"Coords : x {self.lander.x} | y {self.lander.y}"
-        speed_info = f"Speed : h_speed {self.lander.h_speed} | v_speed {self.lander.v_speed}"
-        rotate_info = f"Rotate {self.lander.rotate}"
-        fuel_info = f"Fuel : {self.lander.fuel}"
+        #return "\n".join([score_info,coord_info,speed_info,rotate_info,fuel_info])
+        return str(self.lander)
 
-        return "\n".join([score_info,coord_info,speed_info,rotate_info,fuel_info])
+    def toList(self) -> list:
+        return 
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+
+    def __eq__(self, other) -> bool:
+        print(type(self), type(other))
+        return  self.surface == other.surface and\
+                self.initial_state == other.initial_state and \
+                self.lander == other.lander
 
     def distance(self):
         """ Calculate the distance by "walke" of the collision to the landing site"""
         if self.landing_on_site():
             return 0 
-        point_lander = Point(self.lander.x,self.lander.y)
+        point_lander = Point(self.lander.x, self.lander.y)
         run = False
         distance = 0
         for point in self.surface:
@@ -261,9 +291,11 @@ class EnvMarsLander:
         """Reset the lander"""
         self.lander.update(*self.initial_state)
         self.score = 0
+        if not self.population is None:
+            self.population.previous_landing_site = []
 
     def exit_zone(self) -> bool:
-        return not (0<= self.lander.x < 7000 and 0<= self.lander.y < 3000)
+        return not (0 <= self.lander.x < 7000 and 0 <= self.lander.y < 3000)
 
     def landing_on_site(self) -> bool:
         return self.surface.landing_site.collision(
@@ -315,7 +347,7 @@ class EnvMarsLander:
     def get_score(self):
         if self.exit_zone():
             return 0
-        score = self.get_score_distance() + self.get_score_speed()
+        score = self.get_score_distance() + self.get_score_speed() + self.get_score_diversity()
         if self.landing_on_site():
             self.score = max(100,min(200,score))
             if 180<=self.score:
@@ -325,16 +357,30 @@ class EnvMarsLander:
 
         return self.score
         
+    def get_score_diversity(self):
+        if self.population is None:
+            return 0
+        def dist(chromosome1, chromosome2):
+            return chromosome1.landing_distance - chromosome2.landing_distance
+        min_dist = 0
+        min_dist = min([dist(self, other_chromosome) for other_chromosome in self.population])
+        
+        if self.landing_on_site():
+            return 0
+        else:
+            return 100 * min_dist / self.surface.distance_maximum
 
     def next_dynamics_parameters(self, rotate, power):
-        h_accel = - int(math.sin(rotate*math.pi/180) * power)
-        v_accel = int(EnvMarsLander.GRAVITY + math.cos(rotate*math.pi/180) * power)
+        
+        h_accel = - power * math.sin(rotate*math.pi/180) 
+        v_accel = power * math.cos(rotate*math.pi/180) + EnvMarsLander.GRAVITY   
+
 
         h_speed = self.lander.h_speed + h_accel
         v_speed = self.lander.v_speed + v_accel
 
-        x = self.lander.x + h_speed
-        y = self.lander.y + v_speed
+        x = self.lander.x + self.lander.h_speed + h_accel/2
+        y = self.lander.y + self.lander.v_speed + v_accel/2
 
         return x, y, h_speed, v_speed
 
@@ -359,8 +405,10 @@ class EnvMarsLander:
             4,
             self.lander.power + action.power
         ))
-
+        
         fuel = self.lander.fuel - power
+        if fuel <= 0 :
+            power = 0
 
         x, y, h_speed, v_speed = self.next_dynamics_parameters(rotate, power)
 
@@ -371,6 +419,7 @@ class EnvMarsLander:
             self.point_lander_before,
             self.point_lander_now
         )
+        
         done = (fuel <= 0
             or not 0 <= x < 7000 \
             or  not 0 <= y < 3000 \
@@ -386,18 +435,19 @@ class EnvMarsLander:
 
 class Codingames:
     def __init__(self,initial_state):
+        self.obs = initial_state
         self.rotate = initial_state[-2]
         self.power = initial_state[-1]
 
-    def step(self,action):
+    def step(self,action : Action) -> bool:
         rotate = action.rotate + self.rotate
         power = action.power + self.power
         self.rotate = max(-90, min(90, rotate))
         self.power = max(0, min(4, power))
         print(self.rotate, self.power)   
-        obs = input().split()
-        self.rotate = obs[-2]
-        self.power = obs[-1]
+        self.obs = input().split()
+        self.rotate = self.obs[-2]
+        self.power = self.obs[-1]
         return False
 
 class Chromosome:
@@ -415,6 +465,7 @@ class Chromosome:
     def __init__(self, actions=[]):
         self.actions = actions
         self.score = 0
+        self.landing_distance = None
 
     def __str__(self) -> str:
         return "|".join(map(str,self.actions))
@@ -424,6 +475,9 @@ class Chromosome:
     
     def __next__(self):
         return next(self)
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
 
     def __eq__(self, other) -> bool:
         for g0,g1 in zip(self, other):
@@ -437,11 +491,10 @@ class Chromosome:
     def size(self):
         return len(self.actions)
 
-    def mutation(self,epsilon=1):
+    def mutation(self, probability):
         self.score = 0
         for action in self:
-            if random.random() > epsilon:
-                action.mutation()
+            action.mutation(probability)
         
     def crossover(self,other):
         random_percent = random.random()
@@ -455,19 +508,19 @@ class Chromosome:
             child1.append(Action(rotate1,power1))
         return Chromosome(child0), Chromosome(child1)
     
-    def use(self,env):
+    def use(self, env, step = 1000):
         done = False
         self.score = 0
-        for gene in self:
+        for gene, _ in zip(self, range(step)):
             done = env.step(gene)
             if done:
+                gene.last_action(env.lander.rotate)
                 break
 
         if not env.successful_landing():
             self.score = env.get_score()
-            if not done:
-                print("Not enough action")
             return False
+        self.landing_distance = env.distance()
         return True
             
 class Population:
@@ -481,6 +534,7 @@ class Population:
     def __init__(self,chromosomes = []):
         self.chromosomes = chromosomes
         self.population_size = len(chromosomes)
+        self.previous_landing_site = []
         
 
     def __str__(self) -> str:
@@ -563,6 +617,9 @@ class Population:
         - Choose in the leftover randomly some chromosome
         """
         #Size of the population
+        for chromosome in self:
+            self.previous_landing_site.append(chromosome.landing_distance)
+
         size_graded_retain = int(GRADED_RETAIN_PERCENT * self.size()) 
 
         #Extract the population sorted by score of each chromosome
@@ -603,33 +660,43 @@ class Population:
         return nb_collision
 
 
-evolution_number = 200
+evolution_number = 10
 population_size = 100
-gene_size = 400
-
+gene_size = 200
+step_size = 10
 
 def main():
 
     number_point = int(input())
     lands = []
-    for _ in range(number_points):
+    for _ in range(number_point):
         lands.append(input_codingames()[:2])
-    initial_state = input_codingames()[:7]
-    env = EnvMarsLander(lands,initial_state)
-    env.reset()
-    population = Population.generator(population_size,gene_size)
+
+    state = input_codingames()[:7]
+    codingame_env = Codingames(state)
+    training_env = EnvMarsLander(lands,state)
+        
     done = False
     while not done:
-        for chromosome in population:
-            if chromosome.use(env):
-                chromosome.use(Codingames(initial_state))
-                done = True
+        training_env.lander.update(*codingame_env.obs)
+        population = Population.generator(population_size,gene_size)
+        for _ in range(evolution_number):
+            for chromosome in population:
+                training_env.reset()
+                if chromosome.use(training_env):
+                    the_one = chromosome
+                    done = True
+                    break                
+            if done:
+                break
+            the_one = population.selection()        
+            population.mutation()
+            
+    the_one.use(codingame_env)
 
-            env.reset()
 
-        population.selection()
-        
-        population.mutation()
+if __name__ == "__main__" :
+    main()
 
 
 
