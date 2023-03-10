@@ -33,10 +33,12 @@ It will permits to extend the number of trajectory to use for the creation of ne
 
 It is difficult to have a trajectory that work with a big speed of fall. From this observation we can try to find a dispersion of action and especially for the thrust power that is not uniform. 
 Because during a lot of time, we will have a high thrust power we can propose different dispersion of power command {-1, 0, 1} :
-* uniform
-* -1 : 0.3 | 0 : 0.3 | 1 : 0.4
-* -1 : 0.2 | 0 : 0.3 | 1 : 0.5
-* -1 : 0.1 | 0 : 0.4 | 1 : 0.5
+|-1 | 0| 1|
+|:-:| :-:|:-:|
+|0.33| 0.33| 0.33|
+|0.3 |0.3 |0.4|
+|0.2 |0.3 |0.5|
+|0.1 |0.4 |0.5|
 
 But by analyzing a successful chromosome on the reverse cave we have determine : 
 
