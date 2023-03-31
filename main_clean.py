@@ -12,14 +12,11 @@ input_codingames = lambda : list(map(int,input().split()))
 
 
 GRADED_RETAIN_PERCENT = 0.2    # percentage of retained best fitting individuals
-NONGRADED_RETAIN_PERCENT = 0.2  # percentage of retained remaining individuals (randomly selected)
 MUTATION_PROBABILITY = 0.01
 
 sigmoid = lambda x : math.exp(-x)
 
 WEIGHTS_ROTATION = [1]*10 + [3]*11 + [1]*10
-
-WEIGHTS_ROTATION = [1]*31
 WEIGHTS_POWER = [0.1, 0.70, 0.20]
 
 class Action:
@@ -29,7 +26,6 @@ class Action:
         power : [-1,1]
             action of power
     """
-
     @staticmethod
     def generator():
         action = Action(0,0)
@@ -92,19 +88,19 @@ class Line:
     """
     @staticmethod
     def ccw(A : Point, B : Point, C : Point) -> bool:
-        return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x)
+        return (C.y-A.y) * (B.x-A.x) > (B.y-A.y) * (C.x-A.x)
 
     def __init__(self, point_a : Point, point_b : Point ):
         self.point_a = point_a
         self.point_b = point_b
     
     def __iter__(self):
-        return iter([self.point_a, self.point_b])
+        return iter([self.point_a,self.point_b])
 
     def __next__(self):
         return next(self)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other)  -> bool:
         return self.point_a == other.point_a and self.point_b == other.point_b
 
     def __str__(self) -> str:
@@ -113,9 +109,9 @@ class Line:
     def lenght(self):
         return self.point_a.distance(self.point_b)
 
-    def collision(self, point_c, point_d):
+    def collision(self,point_c,point_d):
         """Look if the segment self and [point_c, point_d] segment's intersect"""
-        return Line.ccw(self.point_a, point_c,point_d) != Line.ccw(self.point_b, point_c, point_d) \
+        return Line.ccw(self.point_a,point_c,point_d) != Line.ccw(self.point_b, point_c, point_d) \
             and Line.ccw(self.point_a, self.point_b, point_c) != Line.ccw(self.point_a, self.point_b, point_d)
     
 class Lander:
@@ -134,15 +130,13 @@ class Lander:
             angle of the lander with 0 deg at the zenith
         power : [0, 4]
             power of the engine 
-        """
+    """
+
     def __str__(self):
         try:
             return f"{self.x} {self.y} {self.h_speed} {self.v_speed} {self.fuel} {self.rotate} {self.power}"
         except AttributeError :
             return "Lander not yiet initialized"
-        
-    def get_state(self):
-        return [self.x, self.y, self.h_speed, self.v_speed, self.fuel, self.rotate, self.power]
 
     def __eq__(self, other) -> bool:
         for self_attr, other_attr in zip(vars(self).values(), vars(other).values()):
@@ -165,7 +159,7 @@ class Lander:
             other.power
         )
         
-    def update(self, x, y, h_speed, v_speed, fuel, rotate, power):
+    def update(self, x ,y ,h_speed ,v_speed ,fuel ,rotate ,power):
         """Update the caracteristics of the lander"""
         self.x = x
         self.y = y
@@ -179,7 +173,7 @@ class Surface:
     """Define the shape of the surface
         lands : [Point]
     """
-    def __init__(self, lands=[]):
+    def __init__(self,lands=[]):
         self.lands = lands
         self.find_landing_site()
         self.find_distance_maximum()
@@ -203,7 +197,7 @@ class Surface:
         """Generator of lines"""
         point_a = self.lands[0]
         for point_b in self.lands[1:]:
-            yield Line(point_a, point_b)
+            yield Line(point_a,point_b)
             point_a = point_b
     
     def find_distance_maximum(self):
@@ -225,10 +219,10 @@ class Surface:
                 return None
         raise EnvironmentError()
 
-    def collision(self, point_a, point_b) -> bool:
+    def collision(self,point_a,point_b) -> bool:
         """Find out if there was a collision when the lander went from point_a to point_b"""
         for line in self.lines():
-            if line.collision(point_a, point_b):
+            if line.collision(point_a,point_b):
                 self.collision_line = line
                 return True
         return False
@@ -243,7 +237,7 @@ class EnvMarsLander:
         self.lander = Lander()
         self.previous_lander = Lander()
         self.surface = Surface(
-            list(map(lambda obs : Point(obs[0], obs[1]), self.lands))
+            list(map(lambda obs : Point(obs[0],obs[1]), self.lands))
         )
         self.population = population
 
@@ -265,7 +259,7 @@ class EnvMarsLander:
 
     def distance(self):
         """ Calculate the distance by "walke" of the collision to the landing site"""
-        if self.landing_on_site():
+        if self.landing_on_site() or self.surface.collision_line is None:
             return 0 
         point_lander = Point(self.lander.x, self.lander.y)
         run = False
@@ -300,8 +294,6 @@ class EnvMarsLander:
         self.maximal_speed = 0
         if not self.population is None:
             self.population.previous_landing_site = []
-        #else:
-            #print("Reset : Population is empty for the environment", file=sys.stderr)
 
     def exit_zone(self) -> bool:
         return not (0 <= self.lander.x < 7000 and 0 <= self.lander.y < 3000)
@@ -358,9 +350,9 @@ class EnvMarsLander:
 
     def get_score_diversity(self):
         if self.population is None:
-            print("Population is empty for the environment", file=sys.stderr)
             return 0
-        print("Diversity score", file=sys.stderr)
+        def dist(chromosome1, chromosome2):
+            return abs(chromosome1.landing_distance - chromosome2.landing_distance)
         landing_point = Point(self.lander.x, self.lander.y)
         min_dist = min([landing_point.distance(other_chromosome.landing_point) for other_chromosome in self.population if other_chromosome.landing_point != landing_point])
         
@@ -436,7 +428,7 @@ class EnvMarsLander:
             or  not 0 <= y < 3000 \
         )
 
-        if collision and 0 < abs(self.lander.rotate) <= 15:
+        if collision and 0<abs(self.lander.rotate)<=15 :
             rotate = 0
             x, y, h_speed, v_speed = self.next_dynamics_parameters(rotate, power)
 
@@ -456,10 +448,12 @@ class Codingames:
         self.rotate = max(-90, min(90, rotate))
         self.power = max(0, min(4, power))
         print(self.rotate, self.power)   
-        self.obs = input().split()
+    
+    def input_obs(self):
+        self.obs = input_codingames()[:-7]
         self.rotate = self.obs[-2]
         self.power = self.obs[-1]
-        return False
+        
 
 class Chromosome:
     
@@ -468,21 +462,19 @@ class Chromosome:
         return chromosome.score
 
     @staticmethod
-    def generator(chromosome_size : int):
-        actions = [Action.generator() for _ in range(chromosome_size)]
+    def generator(gene_size : int):
+        actions = [Action.generator() for _ in range(gene_size)]
         chromosome = Chromosome(actions)
-        chromosome.chromosome_size = chromosome_size
         return chromosome
 
     def __init__(self, actions=[]):
-        self.chromosome_size = None
         self.actions = actions
         self.score = 0
         self.landing_distance = None
         self.landing_point = None
 
     def __str__(self) -> str:
-        return "|".join(map(str, self.actions))
+        return "|".join(map(str,self.actions))
 
     def __iter__(self):
         return iter(self.actions)
@@ -499,12 +491,8 @@ class Chromosome:
                 return False
         return True
 
-    def add(self, action : Action):
+    def add(self,action : Action):
         self.actions.append(action)
-
-    def extend(self, actions : list):
-        for action in actions:
-            self.add(action)
 
     def size(self):
         return len(self.actions)
@@ -544,15 +532,23 @@ class Chromosome:
         return True
             
 class Population:
+    @staticmethod
+    def generator(population_size, gene_size):
+        chromosomes = [Chromosome().generator(gene_size) for _ in range(population_size)]
+        population = Population(chromosomes)
+        population.gene_size = gene_size
+        population.evolution_number = 0
+        population.population_size = population_size
 
-    def __init__(self, population_size, chromosome_size, chromosome_type=Chromosome):
-        self.chromosomes = [
-            Chromosome().generator(chromosome_size) for _ in range(population_size)
-            ]
-        self.population_size = population_size
-        self.evolution_number = 0
-        self.chromosome_size = chromosome_size
-        self.final_chromosome = Chromosome()
+
+        return population
+
+    def __init__(self,chromosomes = []):
+        self.chromosomes = chromosomes
+        self.population_size = len(chromosomes)
+        self.previous_landing_site = []
+        self.evolution_number = None
+        self.gene_size = None
         
 
     def __str__(self) -> str:
@@ -585,7 +581,7 @@ class Population:
 
         scores = list(
             map(
-                lambda chromosome : [chromosome.score/total_score, chromosome],
+                lambda chromosome : [chromosome.score/total_score,chromosome],
                 self.chromosomes
             ))
         cumulative_sum = 0
@@ -594,64 +590,43 @@ class Population:
             cumulative_sum += scores[i][0] 
             scores[i][0] = cumulative_sum 
 
-        #chromosome_couple = [[i] for i in range(len(self.chromosomes))]
         chromosome_selection = []
         paired = False
         for _ in range(size_nongraded_retain):
             random_percent = random.random()
             i = 0
+            while scores[i][0] < random_percent : i+=1
             if not paired:
-                while scores[i][0] < random_percent : i+=1
-                index_parent = i
                 chromosome_parent0 = scores[i][1]
                 paired = True
             else:
-                while scores[i][0] < random_percent : i+=1
-                #chromosome_couple[index_parent].append(i)
-                #chromosome_couple[i].append(index_parent)
                 couple = [chromosome_parent0,scores[i][1]]
                 chromosome_selection.append(couple)
                 paired = False
         return chromosome_selection
 
-    def roulette_wheel(self):
-        paired = False
-        chromosome_tree = [[i] for i in range(len(self.chromosomes))]
-        for chromosome in random.choices(
-            self.chromosomes,
-            weights=map(Chromosome.score, self.chromosomes),
-            k = self.population_size):
-            if not paired:
-                parent0 = chromosome
-                paired = True
-            else:
-                yield [parent0, chromosome]
-                paired = False
-    
         
     def selection(self):
+        self.evolution_number +=1
         """ Do the population go trought a selection process
         - Take a part of the population by the score
         - Choose in the leftover randomly some chromosome
         """
+        #Size of the population
+        for chromosome in self:
+            self.previous_landing_site.append(chromosome.landing_distance)
+
 
         #Extract the population sorted by score of each chromosome
         self.chromosomes = list(
             sorted(self.chromosomes, key=Chromosome.score)
         )
         #Take the size_skipped best
-        best_chromosome = self.chromosomes[-1]
-        best_score = best_chromosome.score
-        
-        """graded_retain_percent = GRADED_RETAIN_PERCENT*max(
-            1,
-            self.evolution_number/best_score
-        )
-        """
+        best_score = self.chromosomes[-1].score
 
         size_graded_retain = int(GRADED_RETAIN_PERCENT * self.size()) 
 
-        random_population = [Chromosome.generator(self.chromosome_size)]*int(
+        random_population = [Chromosome.generator(self.gene_size)]*int(
             self.evolution_number*10/best_score
         )
 
@@ -659,7 +634,7 @@ class Population:
         self.chromosomes = random_population + self.chromosomes[-size_graded_retain:] 
 
         #print(f"Best score : {bests_list[0].score} | Worse score : {leftover[-1].score}")
-        return best_chromosome
+        return self.chromosomes[-1]
         
     def mutation(self):
         for parent0, parent1 in self.parents:        
@@ -669,20 +644,14 @@ class Population:
             if len(self.chromosomes) >= self.population_size:
                 break
 
-    def evolution(self):
-        best_chromosome = self.selection()
-        self.mutation()
-        self.evolution_number+=1
-        return best_chromosome
 
-    def right_shift(self, offset : int):
-        for chromosome in self:
-            chromosome.actions = chromosome.actions[offset:]         
+    def evolution(self):
+        the_one = self.selection()
+        self.mutation()
+        return the_one
 
     def average_score(self):
         return sum(map(lambda x : x.score, self))/len(self.chromosomes)
-
-
 
     def number_of_collision(self):
         already_seen = [0]*len(self.chromosomes)
@@ -696,14 +665,10 @@ class Population:
                 already_seen[i] = True
         return nb_collision
 
-
-evolution_number = 10
-population_size = 100
-chromosome_size = 200
-step_size = 10
+population_size = 40
+gene_size = 50
 
 def main():
-
     number_point = int(input())
     lands = []
     for _ in range(number_point):
@@ -712,22 +677,18 @@ def main():
     state = input_codingames()[:7]
     codingame_env = Codingames(state)
     training_env = EnvMarsLander(lands,state)
-        
+    population = Population.generator(population_size, gene_size)        
     done = False
     while not done:
-        training_env.lander.update(*codingame_env.obs)
-        population = Population.generator(population_size,chromosome_size)
-        for _ in range(evolution_number):
-            for chromosome in population:
-                training_env.reset()
-                if chromosome.use(training_env):
-                    the_one = chromosome
-                    done = True
-                    break                
-            if done:
-                break
-            the_one = population.selection()        
-            population.mutation()
+        for chromosome in population:
+            training_env.reset()
+            if chromosome.use(training_env):
+                the_one = chromosome
+                done = True
+                break                
+            else:
+                the_one = population.selection()        
+                population.mutation()
             
     the_one.use(codingame_env)
 

@@ -56,13 +56,15 @@ population_size = 80
 gene_size = 200
 
 def main():
-    
+    chromosome = Chromosome([Action(0, 1)]*200 + [Action(0, -1)]*100 )
+
     env = EnvMarsLander(test_input2[0],test_input2[1])
     env_render = EnvRender(test_input2[0],test_input2[1])
     env.reset()
     env_render.reset()
     population = Population.generator(population_size,gene_size)
-
+    chromosome.use(env_render)
+    return 
     for i in range(evolution_number):
         for chromosome in population:
             if chromosome.use(env):

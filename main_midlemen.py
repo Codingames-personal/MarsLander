@@ -251,9 +251,6 @@ class EnvMarsLander:
         #return "\n".join([score_info,coord_info,speed_info,rotate_info,fuel_info])
         return str(self.lander)
 
-    def toList(self) -> list:
-        return 
-
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
@@ -300,8 +297,6 @@ class EnvMarsLander:
         self.maximal_speed = 0
         if not self.population is None:
             self.population.previous_landing_site = []
-        #else:
-            #print("Reset : Population is empty for the environment", file=sys.stderr)
 
     def exit_zone(self) -> bool:
         return not (0 <= self.lander.x < 7000 and 0 <= self.lander.y < 3000)
@@ -358,9 +353,9 @@ class EnvMarsLander:
 
     def get_score_diversity(self):
         if self.population is None:
-            print("Population is empty for the environment", file=sys.stderr)
             return 0
-        print("Diversity score", file=sys.stderr)
+        def dist(chromosome1, chromosome2):
+            return abs(chromosome1.landing_distance - chromosome2.landing_distance)
         landing_point = Point(self.lander.x, self.lander.y)
         min_dist = min([landing_point.distance(other_chromosome.landing_point) for other_chromosome in self.population if other_chromosome.landing_point != landing_point])
         
@@ -436,7 +431,7 @@ class EnvMarsLander:
             or  not 0 <= y < 3000 \
         )
 
-        if collision and 0 < abs(self.lander.rotate) <= 15:
+        if collision and 0<abs(self.lander.rotate)<=15 :
             rotate = 0
             x, y, h_speed, v_speed = self.next_dynamics_parameters(rotate, power)
 
@@ -445,21 +440,23 @@ class EnvMarsLander:
         return done or collision
 
 class Codingames:
-    def __init__(self, initial_state):
+    def __init__(self,initial_state):
         self.obs = initial_state
-        self.rotate = initial_state[-2]
-        self.power = initial_state[-1]
+        self.rotate = int(initial_state[-2])
+        self.power = int(initial_state[-1])
 
     def step(self, action : Action) -> bool:
-        rotate = action.rotate + self.rotate
-        power = action.power + self.power
+        rotate = int(action.rotate) + int(self.rotate)
+        power = int(action.power) + int(self.power)
         self.rotate = max(-90, min(90, rotate))
         self.power = max(0, min(4, power))
         print(self.rotate, self.power)   
+
+    def input_obs(self):
         self.obs = input().split()
         self.rotate = self.obs[-2]
         self.power = self.obs[-1]
-        return False
+        
 
 class Chromosome:
     
@@ -480,15 +477,21 @@ class Chromosome:
         self.score = 0
         self.landing_distance = None
         self.landing_point = None
+        self.start_index = 0
 
     def __str__(self) -> str:
         return "|".join(map(str, self.actions))
 
     def __iter__(self):
-        return iter(self.actions)
+        self.i = self.start_index
+        return self
     
     def __next__(self):
-        return next(self)
+        if self.i < len(self.actions):
+            result = self.actions[self.i]
+            self.i+=1
+            return result
+        raise StopIteration
 
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
@@ -527,31 +530,37 @@ class Chromosome:
             child1.append(Action(rotate1,power1))
         return Chromosome(child0), Chromosome(child1)
     
-    def use(self, env, step = 1000):
+    def use(self, env, training = True, step = 1000):
         done = False
-        self.score = 0
+        self.score = 1
         for gene, _ in zip(self, range(step)):
             done = env.step(gene)
             if done:
                 gene.last_action(env.lander.rotate)
                 self.landing_point = Point(env.lander.x, env.lander.y)
                 break
-
-        if not env.successful_landing():
-            self.score = env.get_score()
+        if training and not env.successful_landing():
+            if training : self.score = env.get_score()
             return False
-        self.landing_distance = env.distance()
+        if training : self.landing_distance = env.distance()
         return True
             
 class Population:
+    @staticmethod
+    def generator(population_size, chromosome_size):
+        chromosomes = [Chromosome().generator(chromosome_size) for _ in range(population_size)]
+        population = Population(chromosomes)
+        population.chromosome_size = chromosome_size
+        population.evolution_number = 0
+        population.population_size = population_size
+        return population
 
-    def __init__(self, population_size, chromosome_size, chromosome_type=Chromosome):
-        self.chromosomes = [
-            Chromosome().generator(chromosome_size) for _ in range(population_size)
-            ]
-        self.population_size = population_size
-        self.evolution_number = 0
-        self.chromosome_size = chromosome_size
+    def __init__(self,chromosomes = []):
+        self.chromosomes = chromosomes
+        self.population_size = len(chromosomes)
+        self.previous_landing_site = []
+        self.evolution_number = None
+        self.chromosome_size = None
         self.final_chromosome = Chromosome()
         
 
@@ -634,6 +643,10 @@ class Population:
         - Take a part of the population by the score
         - Choose in the leftover randomly some chromosome
         """
+        #Size of the population
+        for chromosome in self:
+            self.previous_landing_site.append(chromosome.landing_distance)
+
 
         #Extract the population sorted by score of each chromosome
         self.chromosomes = list(
@@ -677,12 +690,10 @@ class Population:
 
     def right_shift(self, offset : int):
         for chromosome in self:
-            chromosome.actions = chromosome.actions[offset:]         
+            chromosome.start_index+=offset       
 
     def average_score(self):
         return sum(map(lambda x : x.score, self))/len(self.chromosomes)
-
-
 
     def number_of_collision(self):
         already_seen = [0]*len(self.chromosomes)
@@ -696,14 +707,15 @@ class Population:
                 already_seen[i] = True
         return nb_collision
 
-
-evolution_number = 10
-population_size = 100
-chromosome_size = 200
-step_size = 10
-
 def main():
+    ## Parameters 
+    population_size = 30
+    chromosome_size = 60
+    
+    offset = 5
+    first_step = 40
 
+    ## Initialize the environment
     number_point = int(input())
     lands = []
     for _ in range(number_point):
@@ -712,29 +724,28 @@ def main():
     state = input_codingames()[:7]
     codingame_env = Codingames(state)
     training_env = EnvMarsLander(lands,state)
-        
-    done = False
-    while not done:
-        training_env.lander.update(*codingame_env.obs)
-        population = Population.generator(population_size,chromosome_size)
-        for _ in range(evolution_number):
+    population = Population.generator(population_size, chromosome_size)        
+    for _ in range(first_step):
+        for chromosome in population:
+            training_env.reset()
+            chromosome.use(training_env)
+        best_chromosome = population.evolution()
+    state_lander = training_env.lander
+    while True:
+
+        training_env.lander.copy(state_lander)    
+        for action,_ in zip(best_chromosome, range(offset)):
+            codingame_env.step(action)
+            codingame_env.input_obs()
             for chromosome in population:
                 training_env.reset()
-                if chromosome.use(training_env):
-                    the_one = chromosome
-                    done = True
-                    break                
-            if done:
-                break
-            the_one = population.selection()        
-            population.mutation()
-            
-    the_one.use(codingame_env)
+                chromosome.use(training_env)
+            best_chromosome = population.selection()
+            training_env.reset()
+            best_chromosome.use(training_env)
+        chromosome_size-=offset
+        
 
-
-if __name__ == "__main__" :
-    main()
-
-
+main()
 
 # %%

@@ -63,6 +63,10 @@ I have two ideas to choose those new initial points :
 * With a uniform distribution : at each n steps, a new initial point will be chosen at a certain points on the trajectory of the actual best one.
 * When a new trajectory offers a much better score than the other one, we directly choose it to take the new intial step.
 
+## If I don't have any idea 
+Reinforcement sutton bartol
+Coarse Conding
+
 We also have to choose where to take the new initial point. I also have to ideas for that :
 * Choosing a fix lengh of trajectory that is kept
 * Choose a point when the trajectory separates from the other

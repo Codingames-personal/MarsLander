@@ -4,12 +4,14 @@
 import random
 import math
 import sys
+import numpy
 
 
 sign = lambda x : (x>0) - (x<0)
 round_up = math.ceil
 input_codingames = lambda : list(map(int,input().split()))
 
+FEATURES
 
 GRADED_RETAIN_PERCENT = 0.2    # percentage of retained best fitting individuals
 NONGRADED_RETAIN_PERCENT = 0.2  # percentage of retained remaining individuals (randomly selected)
@@ -461,20 +463,22 @@ class Codingames:
         self.power = self.obs[-1]
         return False
 
+
+
 class Chromosome:
     
     @staticmethod
     def score(chromosome):
         return chromosome.score
 
-    @staticmethod
-    def generator(chromosome_size : int):
-        actions = [Action.generator() for _ in range(chromosome_size)]
-        chromosome = Chromosome(actions)
-        chromosome.chromosome_size = chromosome_size
-        return chromosome
+    def __init__(self, level=2):
+        #Initialize the list of weights
+        self.w = []
+        for l in range(level):
+            weight = numpy.array(
+                [random.random()]
+            )
 
-    def __init__(self, actions=[]):
         self.chromosome_size = None
         self.actions = actions
         self.score = 0
@@ -544,14 +548,21 @@ class Chromosome:
         return True
             
 class Population:
+    @staticmethod
+    def generator(population_size, chromosome_size):
+        chromosomes = [Chromosome().generator(chromosome_size) for _ in range(population_size)]
+        population = Population(chromosomes)
+        population.chromosome_size = chromosome_size
+        population.evolution_number = 0
+        population.population_size = population_size
+        return population
 
-    def __init__(self, population_size, chromosome_size, chromosome_type=Chromosome):
-        self.chromosomes = [
-            Chromosome().generator(chromosome_size) for _ in range(population_size)
-            ]
-        self.population_size = population_size
-        self.evolution_number = 0
-        self.chromosome_size = chromosome_size
+    def __init__(self,chromosomes = []):
+        self.chromosomes = chromosomes
+        self.population_size = len(chromosomes)
+        self.previous_landing_site = []
+        self.evolution_number = None
+        self.chromosome_size = None
         self.final_chromosome = Chromosome()
         
 
@@ -634,6 +645,10 @@ class Population:
         - Take a part of the population by the score
         - Choose in the leftover randomly some chromosome
         """
+        #Size of the population
+        for chromosome in self:
+            self.previous_landing_site.append(chromosome.landing_distance)
+
 
         #Extract the population sorted by score of each chromosome
         self.chromosomes = list(

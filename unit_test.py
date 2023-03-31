@@ -17,7 +17,7 @@ class TestEnvironment(unittest.TestCase):
     
 class TestDynamic(TestEnvironment):
     flat_lands = [[0, 0], [6999, 0]]
-    initial_state = [2500, 2700, 0, 0, 550, 0, 0]
+    initial_state = [2500, 2500, 0, 0, 500, 0, 0]
 
     def setUp(self) -> None:
         self.test_env = EnvMarsLander(
@@ -27,7 +27,7 @@ class TestDynamic(TestEnvironment):
         self.test_env.reset()
 
     def test_fall(self):
-        print("Test fall : begin", file=sys.stderr)
+
         action_null = Action(0, 0)
         true_lander = Lander()
         test_file_path = os.path.join(dir_test_path,"test_fall.test")
@@ -35,22 +35,20 @@ class TestDynamic(TestEnvironment):
             for line in test_file.readlines():
                 state = list(map(
                     int,
-                    line.split("\t")[1].split(";")
+                    line.split(";")
                 ))
 
                 true_lander.update(*state)
-                try :
-                    self.assertEqual(
-                        self.test_env.lander,
-                        true_lander
-                        )
-                except :
-                    pass
+                
+                self.assertEqual(
+                    self.test_env.lander,
+                    true_lander
+                    )
                 self.test_env.step(action_null)
 
 
     def test_up(self):
-        print("Test up : begin", file=sys.stderr)
+
         action_null = Action(0, 1)
         true_lander = Lander()
         test_file_path = os.path.join(dir_test_path, "test_up.test")
@@ -62,13 +60,12 @@ class TestDynamic(TestEnvironment):
                 ))
 
                 true_lander.update(*state)
-                try :
-                    self.assertEqual(
-                        self.test_env.lander,
-                        true_lander
-                        )
-                except :
-                    pass
+ 
+                self.assertEqual(
+                    self.test_env.lander,
+                    true_lander
+                    )
+                    
                 self.test_env.step(action_null)
 
 

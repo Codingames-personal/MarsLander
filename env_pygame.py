@@ -1,9 +1,18 @@
 ##
-#%%
-from main import * 
+#%%  
+
+
+
 import pygame
 import os
 import sys
+
+from sources.action import *
+from sources.chromosome import *
+from sources.population import *
+from sources.linear_chromosome import *
+from sources.envmarslander import *
+from sources.surface import *
 
 
 ENV_HEIGHT = 3000
@@ -29,16 +38,16 @@ image_directory_path = "/home/smaug/Documents/CodingGames/MarsLander/image/"
 
 test_input = [
     [[0, 1500],[1000, 2000], [2000, 500], [3500, 500], [5000, 1500], [6999, 1000]],
-    [5000, 2500, 0, 0, 1000, 0, 0]
+    [5000, 2500, -50, 0, 1000, 90, 0]
 ]
 test_grotte = [
     [[0, 450], [300, 750], [1000, 450], [1500, 650], [1800, 850], [2000, 1950], [2200, 1850], [2400, 2000], [3100, 1800], [3150, 1550], [2500, 1600], [2200, 1550], [2100, 750], [2200, 150], [3200, 150], [3500, 450], [4000, 950], [4500, 1450], [5000, 1550], [5500, 1500], [6000, 950], [6999, 1750]],
-    [6500, 2600, -20, 0, 10001, 45, 0]
+    [6500, 2600, -20, 0, 1000, 45, 0]
 ]
 
 test_grotte_inv = [
     [[0, 1800], [300, 1200], [1000, 1550], [2000, 1200], [2500, 1650], [3700, 220], [4700, 220], [4750, 1000], [4700, 1650], [4000, 1700], [3700, 1600], [3750, 1900], [4000, 2100], [4900, 2050], [5100, 1000], [5500, 500], [6200, 800], [6999, 600]],
-    [6500, 2000, 0, 0, 12001, 0, 0]
+    [6500, 2000, 0, 0, 1200, 0, 0]
 ]
 
 class EnvRender(EnvMarsLander):
@@ -59,24 +68,33 @@ class EnvRender(EnvMarsLander):
         super().reset()
         self.trajectory = []
 
-    def render_reset(self):
+    def display_text(self, text, position):
+        id_text = self.font.render(text, True, (255, 255, 255))
+        self.display.blit(id_text, position)
+
+    def render_reset(self, population_size = None, chromosome_size = None):        
         self.env_id +=1
         self.screen_reset()
-        id_text = self.font.render("Population : " + str(self.env_id), True, (255, 255, 255))
-        self.display.blit(id_text, (100, 100))
+        self.display_text(
+            "Evolution number : " + str(self.env_id),
+            (100, 100)
+        )
+    
+
 
     def draw_surface(self):
         for line in self.surface.lines():
-            pygame.draw.line(
-                self.display, 
-                RED, 
-                [fx(line.point_a.x), fy(line.point_a.y)],
-                [fx(line.point_b.x), fy(line.point_b.y)]
-            )
+            if not line.point_a in border_left and not line.point_b in border_right:
+                pygame.draw.line(
+                    self.display, 
+                    RED, 
+                    [fx(line.point_a.x), fy(line.point_a.y)],
+                    [fx(line.point_b.x), fy(line.point_b.y)]
+                )
 
-    def step(self,action):
+    def step(self, action):
         done = super().step(action)
-        self.trajectory.append([self.lander.x,self.lander.y])
+        self.trajectory.append([self.lander.x, self.lander.y])
         #pygame.transform.rotate(self.lander_image,self.rotate)
         
         if done :
@@ -104,33 +122,91 @@ class EnvRender(EnvMarsLander):
       
 
     
-# %%
+def print_console(comments):
+    print(comments, file=sys.stderr)
 
-evolution_number = 200
-population_size = 100
-gene_size = 400
+def no_random_initial_chromosome(chromosome_size):
+    falling_chromosome = Chromosome([Action(0,0)]*chromosome_size)
 
-env = EnvRender(*test_input)
-env.reset()
-env.render_reset()
-population = Population.generator(population_size, gene_size)
+def power_repartition(chromosome):
+    data = str(chromosome).split("|")
+    powers = [int(action.split(" ")[1]) for action in data]
+    graded_minus = powers.count(-1)/len(powers)
+    graded_zeros = powers.count(0)/len(powers)
+    graded_ones = powers.count(1)/len(powers)
+    print_console(f"-1 : {graded_minus} | 0 : {graded_zeros} | 1 : {graded_ones}")
 
-while True:
-    success = False
-    for chromosome in population:
-        
-        if chromosome.use(env):
-            print("------SUCCESS------")
-            print(f"Population {env.env_id}")
-            print(env)
-            success = True
-            break
+## START 
+def start(
+        lands,
+        initial_state,
+        population_size = 200,
+        chromosome_size = 200,
+        chromosome_type = Chromosome
+        ):
+    env = EnvRender(lands, initial_state)
+    env.reset()
+    env.render_reset(population_size, chromosome_size)
+
+    population = Population(population_size, chromosome_size, chromosome_type)
+    return env,population
+
+## PLAY POPULATION
+
+def play_population(
+        verbose=True,
+        **middlemen,
+        ):
+    
+    def print_ending(chromosome):
+        print_console("------SUCCESS------")
+        print_console(f"Population {population.evolution_number}")
+        print_console(env)
+        power_repartition(chromosome)
+
+    def print_avancement(chromosome):
+        print_console(f"--------Score : {round(chromosome.score)} -----------")
+        print_console(f"Speed : {round(env.lander.v_speed)} | {round(env.lander.h_speed)} ")
+
+    global env
+    global population
+
+    for number, chromosome in enumerate(population):
         env.reset()
-    
+        if chromosome.use(env):
+            print_ending(chromosome)
+            if middlemen["activate"]:
+                population.final_chromosome.extend(
+                    chromosome.actions
+                )
+                env.reset()
+                population.final_chromosome.use(env)
+            return True
 
-    c = population.selection()
+    best_chromosome = population.evolution()
     
-    population.mutation()
+    if middlemen["activate"]:
+    
+        if population.evolution_number % middlemen["step"] == 0 and\
+              (not population.evolution_number == 0):
+            print_console(f"Choosing the best one")
+            population.final_chromosome.extend(
+                best_chromosome.actions[middlemen["offset"]:]
+                )
+            env.reset()
+            best_chromosome.use(env, step = middlemen["offset"])
+            env.initial_state = env.lander.get_state()
+            population.right_shift(middlemen["offset"])
+            
+    if verbose: print_avancement(best_chromosome)
+    
+    return False
+    
+## PLAY PYGAME    
+def play_pygame_turn(**kwargs):
+
+    global new_population_by_refresh
+    global success
     pygame.display.flip()
     pygame.event.wait()
 
@@ -138,18 +214,35 @@ while True:
         event = pygame.event.wait()
         if success:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+               success = False
                break
-        else:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                break
         
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                new_population_by_refresh = int(input())
+                break
+            if event.key == pygame.K_RIGHT:
+                break
+                
         if event.type == pygame.QUIT:
             pygame.display.quit()
             pygame.quit()
             sys.exit()
 
     env.render_reset()
-    
+    env.display_text(
+        "Parameters : ",
+        (400, 100)
+    )
+    env.display_text(
+        f"Population size : {population.population_size}",
+        (400, 130) 
+    )
+    env.display_text(
+        f"chromosome size : " + str(population.chromosome_size),
+        (400, 160)
+    )
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.display.quit()
@@ -157,9 +250,49 @@ while True:
             sys.exit()
 
 
+### MAIN ####
+
+def main():
+    global env
+    global population
+    global new_population_by_refresh
+    global success
+    env, population = start(
+        *test_grotte_inv,
+        population_size = 100,
+        chromosome_size = 100,
+        chromosome_type = LinearChromosome
+        )
+    new_population_by_refresh = 1
+    success = False
+    middlemen_activate = False
+    if middlemen_activate:
+        population.final_chromosome = Chromosome()
+            
+    while True:
+        for _ in range(new_population_by_refresh):
+            if play_population(
+                activate = middlemen_activate,
+                step = 5,
+                offset = 3
+            ):
+                success = True
+                break
+        play_pygame_turn()
+        if success:
+            return 
+
+if __name__ == "__main__":
+    main()
+
+
+#%% 
+    
 
 
 
 
 
-# %%
+
+
+    # %%
