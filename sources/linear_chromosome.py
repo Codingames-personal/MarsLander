@@ -1,24 +1,30 @@
 ##Linear Chromosome
 #%%
-import numpy
 from sources.chromosome import *
+##
+#%%
+import numpy
 import sys
+import random
 
-def random_array(size):
-    return numpy.array([
-        random.random() for _ in range(size)
+def random_array(shape):
+    return numpy.array([[
+        random.random() for _ in range(shape[1])
+    ] for _ in range(shape[0])
     ])
 
+##
+#%%
 MAXIMAL_NUMBER_OF_STEP = 200
 
 class LinearChromosome(Chromosome):
     @staticmethod
     def generator(chromosome_size : int):
-        
-        weights_power = random_array(chromosome_size)
-        weights_rotate = random_array(chromosome_size)
-        bias_power = random.random()
-        bias_rotate = random.random()
+        dimension = 3
+        weights_power = random_array([dimension, chromosome_size])
+        weights_rotate = random_array([dimension, chromosome_size])
+        bias_power = random_array([1, dimension])
+        bias_rotate = random_array([1, dimension])
         chromosome = LinearChromosome(
             weights_power, weights_rotate, bias_power, bias_rotate
         )
@@ -43,6 +49,7 @@ class LinearChromosome(Chromosome):
         self.bias_rotate = bias_rotate
         self.chromosome_size = len(weights_power)
         self.starting_index = 0
+ 
 
     def __iter__(self):
         return iter(zip(self.weights_power, self.weights_rotate))
@@ -51,21 +58,23 @@ class LinearChromosome(Chromosome):
         return next(self)
     
     def features_extract(self, env):
-        coarse_coding = env.coarse_mapping(self.chromosome_size)
-        return numpy.array(
-            coarse_coding
-        )
+        coarse_map = env.coarse_mapping(self.chromosome_size)
+        coarse_speed, coarse_action = env.coarse_obs(self.chromosome_size)
+        return numpy.array([
+            coarse_map,
+            coarse_speed,
+            coarse_action
+        ]).T
 
 
     def linear_predictor(self, x):
         
-        power_percent = 0
-        rotate_percent = 0
-        """for i in range(len(x)):
-            for j in range(i, len(j)):
-                weight_index = i*7+j
-                power_percent+= x[i]*x[j]*self.weights_power[weight_index]
-                rotate+= x[i]*x[j]*self.weights_rotate[weight_index]"""
+
+        power_output = 0
+        rotate_output_percent = 0
+        
+
+        
         power_percent = self.bias_power + numpy.dot(x, self.weights_power) / self.chromosome_size
         rotate_percent = self.bias_rotate + numpy.dot(x, self.weights_rotate) / self.chromosome_size
         
