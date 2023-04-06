@@ -18,6 +18,13 @@ class Lander:
         power : [0, 4]
             power of the engine 
         """
+    x_scale = 7000
+    y_scale = 3000
+    h_speed_scale = 1000
+    v_speed_scale = 1000
+    rotate_scale = 180
+    power_scale = 5
+
     def __str__(self):
         try:
             return f"{self.x} {self.y} {self.h_speed} {self.v_speed} {self.fuel} {self.rotate} {self.power}"
@@ -26,6 +33,7 @@ class Lander:
         
     def get_state(self):
         return [self.x, self.y, self.h_speed, self.v_speed, self.fuel, self.rotate, self.power]
+
 
     def __eq__(self, other) -> bool:
         for self_attr, other_attr in zip(vars(self).values(), vars(other).values()):

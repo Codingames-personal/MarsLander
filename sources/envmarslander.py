@@ -13,6 +13,8 @@ y_scale = 3000
 class EnvMarsLander:
     """ Environment of the Mars lander puzzle of CodinGames"""
     GRAVITY = - 3.711 # gravity on Mars m.s-2
+    x_scale = 7000
+    y_scale = 3000
 
     def __init__(self, lands : list, initial_state : list):
         self.lands = lands
@@ -112,8 +114,8 @@ class EnvMarsLander:
 
     def get_score_speed(self):
         if self.landing_on_site():
-            score = max(0, 60*(1 - abs(self.lander.v_speed)/100))
-            score += max(0, 40*(1 - abs(self.lander.h_speed)/80))
+            score = max(0, 100*(1 - abs(self.lander.v_speed)/200))
+            score += max(0, 80*(1 - abs(self.lander.h_speed)/200))
         else:
             abs_speed = math.sqrt(self.lander.v_speed**2 + self.lander.h_speed**2)
             score = max(0, round(20*(1 - abs_speed/150))) # 150 : max speed estimated
@@ -133,8 +135,8 @@ class EnvMarsLander:
             return 0
         score = self.get_score_distance() + self.get_score_speed() + self.get_score_max_speed()
         if self.landing_on_site():
-            self.score = max(200, min(400, score))
-            if 220<=self.score:
+            self.score = max(200, 400)
+            if 320<=self.score:
                 self.score += self.get_score_angle()
         else:
             self.score = max(0, min(200, score))
@@ -143,7 +145,7 @@ class EnvMarsLander:
     def next_dynamics_parameters(self, rotate, power):
         
         h_accel = - power * math.sin(rotate*math.pi/180) 
-        v_accel = power * math.cos(rotate*math.pi/180) + EnvMarsLander.GRAVITY   
+        v_accel = power * math.cos(rotate*math.pi/180) + self.GRAVITY   
 
         h_speed = self.lander.h_speed + h_accel
         v_speed = self.lander.v_speed + v_accel
@@ -236,3 +238,43 @@ class EnvMarsLander:
 
         return coarse_coding
             
+    def coarse_obs(self, division_number):
+        coarse_speed = [
+            [self.lander.h_speed, self.lander.v_speed],
+            [-Lander.h_speed_scale/2, -Lander.v_speed_scale/2],
+            [Lander.h_speed_scale/2, Lander.v_speed_scale]
+        ]
+        coarse_action = [
+            [self.lander.rotate, self.lander.power],
+            [-Lander.rotate_scale/2, 0],
+            [Lander.rotate_scale/2, Lander.power_scale]
+        ]
+        
+        def obs_division(obs_list, obs_0_list, obs_1_list, division_number):
+            
+            def recu(division_number):
+                if division_number == 0 :
+                    return []
+            
+                coarse_number = 0
+                for i,(obs, obs_0, obs_1) in enumerate(zip(obs_list, obs_0_list, obs_1_list)):
+                    obs_m = (obs_0 + obs_1)/2
+                    if obs > obs_m:
+                        coarse_number +=1
+                        obs_0_list[i] = obs_m
+                    else:
+                        obs_1_list[i] = obs_m
+
+                coarse_number >>=1
+                return [coarse_number] + recu(division_number-1)
+                
+
+            return recu(division_number)
+    
+        return [
+            obs_division(*coarse_speed, division_number),
+            obs_division(*coarse_action, division_number)
+        ]
+
+
+        

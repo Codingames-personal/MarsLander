@@ -1,12 +1,21 @@
 import random
+import numpy
 from sources.chromosome import Chromosome
 from sources.tools.point import Point
 
-GRADED_RETAIN_PERCENT = 0.2    # percentage of retained best fitting individuals
+GRADED_RETAIN_PERCENT = 0.1    # percentage of retained best fitting individuals
 NONGRADED_RETAIN_PERCENT = 0.2  # percentage of retained remaining individuals (randomly selected)
-MUTATION_PROBABILITY = 0.01
+MUTATION_PROBABILITY = 0.1
 
 class Population:
+
+    fitness_power_max = 0
+    fitness_rotate_max = 0
+    fitness_power_min = 1e8
+    fitness_rotate_min = 1e8
+    evolution_number = 0
+    final_chromosome = Chromosome()
+    
 
     def __init__(self, population_size, chromosome_size, chromosome_type = Chromosome):
         self.chromosomes = [
@@ -15,11 +24,8 @@ class Population:
         self.new_chromosomes = []
         self.population_size = population_size
         self.chromosome_size = chromosome_size
-        self.evolution_number = 0
-        self.final_chromosome = Chromosome()
 
         
-
     def __str__(self) -> str:
         return "\n".join(map(str, self.chromosomes))
 
@@ -34,6 +40,7 @@ class Population:
             self.chromosomes, key=Chromosome.get_score, reverse=True
         )
     
+
     def add(self, chromosome : Chromosome):
         for current_chromosome in self:
             if chromosome is current_chromosome:
@@ -149,6 +156,17 @@ class Population:
     def right_shift(self, offset : int):
         for chromosome in self:
             chromosome.starting_index +=offset
+
+    def play(self, env):
+        done = False
+        while not done:
+            for chromosome in self:
+                env.reset()
+                if chromosome.use(env):
+                    return chromosome
+            self.evolution()
+            yield True
+            
 
 
 

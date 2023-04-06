@@ -38,3 +38,4 @@ class Action:
         """Choose the best action to choose"""
         if abs(rotate) <= 15:
             self.rotate = -rotate
+
