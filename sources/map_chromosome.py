@@ -51,29 +51,14 @@ class MapVectorChromosome(Chromosome):
         self.y_scale, self.x_scale = numpy.shape(vector_map_power_)
         self.chromosome_size = self.y_scale * self.x_scale
 
-    def function(self, lander):
-        x = round(self.x_scale * lander.x/7000)
-        y = round(self.y_scale * lander.y/3000)
+    def create_action(self, env):
+        x = round(self.x_scale * env.lander.x/7000)
+        y = round(self.y_scale * env.lander.y/3000)
 
         dpower = self.vector_map_power[y, x]
         drotate = self.vector_map_rotate[y, x]
         return Action(drotate, dpower)
     
-    def use(self, env):
-        
-        for _ in range(MAXIMAL_NUMBER_OF_STEP):
-            action = self.function(env.lander)
-            if env.step(action):
-                break
-            
-        self.landing_distance = env.landing_distance()
-
-        if not env.successful_landing():
-            self.landing_on_site = env.landing_on_site()
-            self.landing_point = Point(env.lander.x, env.lander.y)
-            self.score = env.get_score()
-            return False
-        return True
     
     def mutation(self, probability):
         if random.random() < probability:

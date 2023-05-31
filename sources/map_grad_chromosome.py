@@ -19,11 +19,15 @@ height_ratio = 3000/(7000+3000)
 #%%
 MAXIMAL_NUMBER_OF_STEP = 200
 
+
+WEIGHTS_POWER = [1, 1, 1, 1, 4]
+WEIGHTS_ROTATION = [1]*45 + [5]*16 + [1]*45
+
 class MapGradChromosome(Chromosome):
     starting_index = 0
 
     def random_power():
-        return random.randint(0, 4)
+        return random.choices([0, 1, 2, 3, 4], WEIGHTS_POWER)[0]
     
     def random_rotate():
         return random.randint(-90, 90)
@@ -51,9 +55,9 @@ class MapGradChromosome(Chromosome):
         self.y_scale, self.x_scale = numpy.shape(vector_map_power_)
         self.chromosome_size = self.y_scale * self.x_scale
 
-    def function(self, lander):
-        x = round(self.x_scale * lander.x/7000)
-        y = round(self.y_scale * lander.y/3000)
+    def create_action(self, env):
+        x = round(self.x_scale * env.lander.x/7000)
+        y = round(self.y_scale * env.lander.y/3000)
 
         if not (0<= x < self.x_scale) or not (0<= y < self.y_scale):
             return Action(0, 0)
@@ -62,7 +66,7 @@ class MapGradChromosome(Chromosome):
             -1,
             min(
                 1,
-                grad_power - lander.power
+                grad_power - env.lander.power
             )
 
         )
@@ -71,28 +75,13 @@ class MapGradChromosome(Chromosome):
             -15,
             min(
                 15,
-                grad_rotate - lander.rotate
+                grad_rotate - env.lander.rotate
             )
         )
 
         
         return Action(rotate, power)
     
-    def use(self, env):
-        
-        for _ in range(MAXIMAL_NUMBER_OF_STEP):
-            action = self.function(env.lander)
-            if env.step(action):
-                break
-            
-        self.landing_distance = env.landing_distance()
-
-        if not env.successful_landing():
-            self.landing_on_site = env.landing_on_site()
-            self.landing_point = Point(env.lander.x, env.lander.y)
-            self.score = env.get_score()
-            return False
-        return True
     
     def mutation(self, probability):
         if random.random() < probability:

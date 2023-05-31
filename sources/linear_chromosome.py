@@ -117,23 +117,11 @@ class LinearChromosome(Chromosome):
         rotate = round(rotate_percent*30 -15)
         return Action(rotate, power)
 
-    def use(self, env):
 
-        for _ in range(MAXIMAL_NUMBER_OF_STEP):
-            x = self.features_extract(env)
-            action = self.linear_predictor(x)
-
-            if env.step(action):
-                break
-            
-        self.landing_distance = env.landing_distance()
-
-        if not env.successful_landing():
-            self.landing_on_site = env.landing_on_site()
-            self.landing_point = Point(env.lander.x, env.lander.y)
-            self.score = env.get_score()
-            return False
-        return True
+    def create_action(self, env):
+        x = self.features_extract(env)
+        return self.linear_predictor(x)
+    
     
     def mutation(self, probability):
         for w_index in range(self.chromosome_size):

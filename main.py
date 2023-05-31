@@ -564,7 +564,7 @@ class Population:
     def __next__(self):
         return next(self)
 
-    def sorted_score(self):
+    def sorted_score(self): 
         return sorted(
             self.chromosomes, key=Chromosome.score, reverse=True
         )

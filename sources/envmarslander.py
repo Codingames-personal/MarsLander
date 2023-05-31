@@ -82,6 +82,7 @@ class EnvMarsLander:
         return not (0 <= self.lander.x < 7000 and 0 <= self.lander.y < 3000)
 
     def landing_on_site(self) -> bool:
+        
         return self.surface.collision_line == self.surface.landing_site
 
     def landing_angle(self) -> bool:
@@ -107,10 +108,11 @@ class EnvMarsLander:
             self.landing_horizontal_speed()
             )
 
+
     def get_score_distance(self):
         if self.landing_on_site():
             return 200
-        return round(200*(1 - abs(self.landing_distance())/self.surface.distance_maximum))
+        return round(100*(1 - abs(self.landing_distance())/self.surface.distance_maximum))
 
     def get_score_speed(self):
         if self.landing_on_site():
@@ -131,11 +133,11 @@ class EnvMarsLander:
     def get_score(self):
         if self.exit_zone():
             return 0
-        if self.lander.fuel == 0:
+        if self.lander.fuel <= 0:
             return 0
         score = self.get_score_distance() + self.get_score_speed() + self.get_score_max_speed()
         if self.landing_on_site():
-            self.score = max(200, 400)
+            self.score = max(200, score)
             if 320<=self.score:
                 self.score += self.get_score_angle()
         else:
@@ -184,23 +186,22 @@ class EnvMarsLander:
 
         x, y, h_speed, v_speed = self.next_dynamics_parameters(rotate, power)
 
-        self.point_lander_before = Point(self.lander.x,self.lander.y)
+        self.point_lander_before = Point(self.lander.x, self.lander.y)
         self.point_lander_now = Point(x, y)
 
         collision = self.surface.collision(
             self.point_lander_before,
             self.point_lander_now
         )
-        
-        done = fuel == 0 or collision
 
-        if collision and 0 < abs(self.lander.rotate) <= 15:
-            x, y, h_speed, v_speed = self.next_dynamics_parameters(0, power)
+        if collision and 0 < abs(rotate) <= 15:
+            last_action = Action(-self.lander.rotate, action.power)
+            self.step(last_action)
 
         self.maximal_speed = max(self.maximal_speed, abs(h_speed)*1.5, abs(v_speed))
         self.lander.update(x, y, h_speed, v_speed, fuel, rotate, power)
         
-        return done
+        return collision or self.exit_zone()
     
 
     def normalize_obs(self):

@@ -6,8 +6,8 @@ class Point:
         y : [0, 2999]
     """
     def __init__(self, x : int, y : int):
-        self.x = min(6999,max(0,x))
-        self.y = min(2999,max(0,y))
+        self.x = x
+        self.y = y
 
     def __str__(self):
         return f"{self.x} {self.y}"
@@ -16,7 +16,12 @@ class Point:
         return not self.__eq__(other)
 
     def __eq__(self, other) -> bool:
-        return (abs(self.x - other.x) < 1 and abs(self.y - other.y) < 1)
+        if self.x is None :
+            print("Error : self is None")
+        elif other.x is None:
+            print("Error : other is None")
+        else:
+            return (abs(self.x - other.x) < 1 and abs(self.y - other.y) < 1)
 
     def distance(self, other) -> float:
         """Calcul the distance between two points"""

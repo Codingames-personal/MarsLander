@@ -4,15 +4,10 @@ from sources.tools.point import Point
 from sources.action import Action
 from sources.envmarslander import EnvMarsLander
 from sources.gene import *
+from sources.chromosome import *
 
-
-class Chromosome:
-    score = 0  
-    landing_distance = None
-    landing_point = None
-    landing_on_site = None
-    starting_index = 0
-    
+class ChromosomeAction(Chromosome):
+    action_index = -1
     @staticmethod
     def get_score(chromosome):
         return chromosome.score
@@ -20,7 +15,7 @@ class Chromosome:
     @staticmethod
     def generator(chromosome_size : int):
         actions = [Action.generator() for _ in range(chromosome_size)]
-        chromosome = Chromosome(actions)
+        chromosome = ChromosomeAction(actions)
         chromosome.chromosome_size = chromosome_size
         return chromosome
 
@@ -81,25 +76,15 @@ class Chromosome:
             child0.append(Action(rotate0, power0))
             child1.append(Action(rotate1, power1))
 
-        return Chromosome(child0), Chromosome(child1)
-    
-    def use(self, env : EnvMarsLander, step = 1000):
-        done = False
-        self.score = 0
-        for gene, _ in zip(self.actions, range(step)):
-            done = env.step(gene)
-            if done:
-                gene.last_action(env.lander.rotate)
-                self.landing_distance = env.landing_distance()
-                break
+        return ChromosomeAction(child0), ChromosomeAction(child1)
 
-        self.landing_point = Point(env.lander.x, env.lander.y)
-        if done and not env.successful_landing(): 
-            self.landing_on_site = env.landing_on_site()
-            self.score = env.get_score()
-            return False
-        
-        return done
+    def create_action(self, arg):
+        self.action_index +=1
+        if self.action_index == self.chromosome_size:
+            self.action_index = 0
+            print("Error : chromosome size not long enough")
+        return self.actions[self.action_index-1]
+
 
 
 

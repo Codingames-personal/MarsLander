@@ -19,7 +19,8 @@ class Chromosome:
 
     @staticmethod
     def generator(chromosome_size : int):
-        pass
+        chromosome = Chromosome()
+        return chromosome
 
     def __str__(self) -> str:
         return "|".join(map(str, self))
@@ -30,8 +31,25 @@ class Chromosome:
     def crossover(self,other):
         pass
 
-    def use(self):
+    def create_action(self):
         pass
+
+    def use(self, env : EnvMarsLander):
+        done = False
+
+        while not done:
+            done = env.step(self.create_action(env))
+        
+        self.landing_point = Point(env.lander.x, env.lander.y)
+        self.landing_distance = env.landing_distance()
+
+        if done and not env.successful_landing():
+            self.landing_on_site = env.landing_on_site()
+            self.score = env.get_score()
+            return False
+        
+        return True
+
 
 
 

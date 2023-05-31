@@ -13,7 +13,9 @@ from sources.population import *
 from sources.linear_chromosome import *
 from sources.envmarslander import *
 from sources.surface import *
-
+from sources.map_chromosome import *
+from sources.map_grad_chromosome import *
+from sources.chromosome_actions import *
 
 ENV_HEIGHT = 3000
 ENV_WIDTH = 7000
@@ -38,7 +40,7 @@ image_directory_path = "/home/smaug/Documents/CodingGames/MarsLander/image/"
 
 test_input = [
     [[0, 1500],[1000, 2000], [2000, 500], [3500, 500], [5000, 1500], [6999, 1000]],
-    [5000, 2500, -50, 0, 1000, 90, 0]
+    [5000, 2500, 0, 0, 1000, 90, 0]
 ]
 test_grotte = [
     [[0, 450], [300, 750], [1000, 450], [1500, 650], [1800, 850], [2000, 1950], [2200, 1850], [2400, 2000], [3100, 1800], [3150, 1550], [2500, 1600], [2200, 1550], [2100, 750], [2200, 150], [3200, 150], [3500, 450], [4000, 950], [4500, 1450], [5000, 1550], [5500, 1500], [6000, 950], [6999, 1750]],
@@ -151,14 +153,16 @@ def start(
     population = Population(population_size, chromosome_size, chromosome_type)
     return env,population
 
+
 ## PLAY POPULATION
+
 
 def play_population(
         verbose=True,
         **middlemen,
         ):
     
-    def print_ending(chromosome):
+    def print_ending(chromosome : Chromosome):
         print_console("------SUCCESS------")
         print_console(f"Population {population.evolution_number}")
         print_console(env)
@@ -167,6 +171,7 @@ def play_population(
     def print_avancement(chromosome):
         print_console(f"--------Score : {round(chromosome.score)} -----------")
         print_console(f"Speed : {round(env.lander.v_speed)} | {round(env.lander.h_speed)} ")
+        print_console(f"Rotation {env.lander.rotate}")
 
     global env
     global population
@@ -199,7 +204,7 @@ def play_population(
             population.right_shift(middlemen["offset"])
             
     if verbose: print_avancement(best_chromosome)
-    
+
     return False
     
 ## PLAY PYGAME    
@@ -259,10 +264,10 @@ def main():
     global success
     env, population = start(
         *test_grotte_inv,
-        population_size = 100,
-        chromosome_size = 100,
-        chromosome_type = LinearChromosome
-        )
+        population_size = 200,
+        chromosome_size = 300,
+        chromosome_type = ChromosomeAction
+    )
     new_population_by_refresh = 1
     success = False
     middlemen_activate = False
@@ -295,4 +300,4 @@ if __name__ == "__main__":
 
 
 
-    # %%
+# %%

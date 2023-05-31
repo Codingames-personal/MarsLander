@@ -34,7 +34,7 @@ class Action:
         self.rotate = random.choices(list(range(-15, 16)), WEIGHTS_ROTATION )[0]
         self.power = random.choices([-1, 0, 1], WEIGHTS_POWER)[0]
 
-    def last_action(self,rotate):
+    def last_action(self, rotate):
         """Choose the best action to choose"""
         if abs(rotate) <= 15:
             self.rotate = -rotate
